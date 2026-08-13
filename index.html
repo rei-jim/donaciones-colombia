@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario de Donaciones — Ayuda Colombia</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --ink:#1a2230; --muted:#5b6675; --line:#e3e8ee;
+    --crit:#c62828; --crit-bg:#fdecec; --bajo:#e8830c; --bajo-bg:#fdf1e3;
+    --ok:#2e7d4f; --ok-bg:#e8f5ec; --exc:#1565c0; --exc-bg:#e7f0fb; --brand:#0f3d5e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+  header{background:linear-gradient(135deg,var(--brand),#155a86);color:#fff;padding:26px 18px}
+  header h1{margin:0 0 6px;font-size:1.5rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  header p{margin:0;opacity:.92;max-width:70ch;font-size:.98rem}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:20px 0}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .stat .n{font-size:1.7rem;font-weight:700;line-height:1}
+  .stat .l{font-size:.82rem;color:var(--muted);margin-top:6px}
+  .stat.crit .n{color:var(--crit)} .stat.exc .n{color:var(--exc)} .stat.ok .n{color:var(--ok)}
+  .destacado{background:var(--crit-bg);border:1px solid #f3c9c9;border-radius:12px;padding:14px 16px;margin-bottom:18px}
+  .destacado h2{margin:0 0 8px;font-size:1rem;color:var(--crit)}
+  .chips-need{display:flex;flex-wrap:wrap;gap:8px}
+  .need-chip{background:#fff;border:1px solid #f0c2c2;border-radius:999px;padding:5px 12px;font-size:.86rem;font-weight:600;color:var(--crit)}
+  .need-chip span{color:var(--muted);font-weight:500}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+  .controls input[type=search],.controls select{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:.92rem;color:var(--ink)}
+  .controls input[type=search]{flex:1;min-width:180px}
+  .cats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+  .cat{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;font-size:.85rem;cursor:pointer;color:var(--muted)}
+  .cat.active{background:var(--brand);border-color:var(--brand);color:#fff}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+  .item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;flex-direction:column;gap:10px}
+  .item.is-crit{border-left:5px solid var(--crit)} .item.is-bajo{border-left:5px solid var(--bajo)}
+  .item.is-ok{border-left:5px solid var(--ok)} .item.is-exc{border-left:5px solid var(--exc)}
+  .item .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .item .name{font-weight:700;font-size:1.02rem}
+  .item .cat-tag{font-size:.74rem;color:var(--muted)}
+  .badge{font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .badge.is-crit{background:var(--crit-bg);color:var(--crit)} .badge.is-bajo{background:var(--bajo-bg);color:var(--bajo)}
+  .badge.is-ok{background:var(--ok-bg);color:var(--ok)} .badge.is-exc{background:var(--exc-bg);color:var(--exc)}
+  .bar{height:10px;background:#eef1f5;border-radius:999px;overflow:hidden}
+  .bar > i{display:block;height:100%;border-radius:999px}
+  .bar > i.is-crit{background:var(--crit)} .bar > i.is-bajo{background:var(--bajo)}
+  .bar > i.is-ok{background:var(--ok)} .bar > i.is-exc{background:var(--exc)}
+  .nums{display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted)}
+  .nums b{color:var(--ink)}
+  .gap{font-size:.9rem;font-weight:600}
+  .gap.need{color:var(--crit)} .gap.extra{color:var(--exc)} .gap.done{color:var(--ok)}
+  .updated{font-size:.8rem;color:var(--muted);margin:0 0 14px}
+  .updated .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:middle}
+  .updated.err .dot{background:var(--bajo)}
+  footer{color:var(--muted);font-size:.82rem;text-align:center;padding:26px 16px 40px}
+  .empty{text-align:center;color:var(--muted);padding:40px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>📦 Inventario de Donaciones — Colombia</h1>
+    <p>Consulta cuánto hay de cada artículo antes de donar. Así evitamos repetir lo que sobra (como cobijas) y priorizamos lo que falta (como arroz). Ordenado de <strong>lo más necesitado</strong> a lo que ya está cubierto.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="updated" id="updated"><span class="dot"></span><span id="updatedTxt">Cargando datos…</span></p>
+  <div class="stats" id="stats"></div>
+  <div class="destacado" id="destacado" style="display:none">
+    <h2>🚨 Lo más necesario ahora</h2>
+    <div class="chips-need" id="needList"></div>
+  </div>
+  <div class="controls">
+    <input type="search" id="search" placeholder="Buscar artículo…" aria-label="Buscar artículo">
+    <select id="sort" aria-label="Ordenar">
+      <option value="priority">Ordenar: más necesitado primero</option>
+      <option value="name">Ordenar: nombre (A–Z)</option>
+      <option value="gap">Ordenar: mayor faltante</option>
+    </select>
+  </div>
+  <div class="cats" id="cats"></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">No hay artículos que coincidan.</div>
+</main>
+
+<footer>
+  Página de referencia para donaciones · Los porcentajes indican la cobertura frente a la cantidad necesaria.
+</footer>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓN
+   ------------------------------------------------------------
+   CSV_URL define de dónde se leen los datos EN VIVO.
+
+   Opción A (GitHub Pages): deja el archivo CSV junto a este HTML
+   en el repositorio y usa el nombre del archivo:
+       const CSV_URL = 'inventario_donaciones.csv';
+   Cada vez que edites y guardes (commit) el CSV, la página se
+   actualiza sola al recargarla.
+
+   Opción B (Google Sheets, ideal para editar sin tocar código):
+   en tu hoja -> Archivo -> Compartir -> Publicar en la web ->
+   elige la hoja y formato "CSV" -> copia la URL y pégala aquí:
+       const CSV_URL = 'https://docs.google.com/.../pub?gid=0&single=true&output=csv';
+   Cualquiera con acceso edita la hoja y la página refleja el cambio.
+
+   Columnas requeridas del CSV:
+   articulo,categoria,cantidad_actual,cantidad_necesaria,unidad
+
+   >>> TU HOJA YA ESTÁ CREADA:
+   "Inventario Donaciones Colombia"
+   https://docs.google.com/spreadsheets/d/1_KTwSI0nXYM9Dxi7w7CizibKMXWhDbQ3o1Ly2qibPRg/edit
+
+   Solo falta 1 paso manual: publicarla como CSV.
+   En la hoja -> Archivo -> Compartir -> Publicar en la web ->
+   pestaña "Inventario..." + formato "Valores separados por comas (.csv)"
+   -> Publicar -> copia la URL (termina en output=csv) y pégala abajo,
+   reemplazando el texto PEGA_AQUI_LA_URL_CSV.
+   ============================================================ */
+/* Fuente CASI INSTANTÁNEA (recomendada): refleja las ediciones en segundos.
+   Requiere que la hoja esté compartida como "Cualquiera con el enlace: Lector".
+   Usa el ID normal de la hoja, no el de publicación. */
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/1_KTwSI0nXYM9Dxi7w7CizibKMXWhDbQ3o1Ly2qibPRg/gviz/tq?tqx=out:csv&gid=1913958576';
+
+/* Alternativa (enlace "Publicar en la web"): funciona pero con caché lento
+   de varios minutos. Déjalo comentado a menos que prefieras no compartir
+   la hoja públicamente:
+   const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3LoYafu1-aZKCUgq8qqzpC68naqTG7DiW7cHATO7Ige40K0UzENB8K_CSdfn2YWvIYT_amyezAIyn/pub?gid=1913958576&single=true&output=csv';
+*/
+
+/* Auto-actualización: la página vuelve a leer el CSV cada X minutos
+   sin que nadie recargue. Ideal para una pantalla en el centro de acopio.
+   Pon 0 para desactivarlo. */
+const REFRESH_MIN = 5;
+
+/* Datos de respaldo: se usan solo si no se puede leer el CSV
+   (por ejemplo al abrir el HTML con doble clic, sin servidor). */
+const CSV_RESPALDO = `articulo,categoria,cantidad_actual,cantidad_necesaria,unidad
+Arroz,Alimentos,20,500,kg
+Frijoles,Alimentos,35,300,kg
+Aceite de cocina,Alimentos,12,150,litros
+Leche en polvo,Alimentos,25,200,kg
+Atún enlatado,Alimentos,80,400,latas
+Panela,Alimentos,40,250,kg
+Fórmula infantil,Alimentos,15,120,kg
+Agua embotellada,Agua,180,2500,litros
+Cobijas,Abrigo,850,400,unidades
+Ropa,Abrigo,1300,500,unidades
+Botas de caucho,Abrigo,70,250,pares
+Colchonetas,Refugio,60,350,unidades
+Carpas,Refugio,15,120,unidades
+Lonas plásticas,Refugio,90,300,unidades
+Kit de higiene,Higiene,90,450,unidades
+Papel higiénico,Higiene,260,300,rollos
+Jabón,Higiene,250,300,unidades
+Pañales,Higiene,45,300,paquetes
+Toallas sanitarias,Higiene,55,350,paquetes
+Cepillos de dientes,Higiene,110,300,unidades
+Botiquín primeros auxilios,Salud,12,90,unidades
+Medicamentos básicos,Salud,30,150,cajas
+Suero oral,Salud,60,400,sobres
+Linternas,Emergencia,50,180,unidades
+Pilas,Emergencia,70,350,paquetes
+Velas,Emergencia,320,200,unidades
+Fósforos,Emergencia,140,200,cajas`;
+
+let DATA = [];
+let filtro = {cat:'Todas', q:'', sort:'priority'};
+
+/* Divide una línea de CSV respetando comillas (para el formato gviz de
+   Google, que envuelve cada campo entre comillas) y comas internas. */
+function splitCSVLine(line){
+  const out=[]; let cur='', q=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(q){
+      if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; }
+      else cur+=ch;
+    }else{
+      if(ch==='"') q=true;
+      else if(ch===',') { out.push(cur); cur=''; }
+      else cur+=ch;
+    }
+  }
+  out.push(cur);
+  return out.map(s=>s.trim());
+}
+
+function parseCSV(text){
+  const lines = text.replace(/^﻿/,'').trim().split(/\r?\n/);
+  const headers = splitCSVLine(lines[0]).map(h=>h.toLowerCase());
+  const idx = {
+    articulo: headers.indexOf('articulo'),
+    categoria: headers.indexOf('categoria'),
+    actual: headers.indexOf('cantidad_actual'),
+    necesaria: headers.indexOf('cantidad_necesaria'),
+    unidad: headers.indexOf('unidad')
+  };
+  return lines.slice(1).filter(l=>l.trim()).map(line=>{
+    const c = splitCSVLine(line);
+    const actual = parseFloat(c[idx.actual])||0;
+    const necesaria = parseFloat(c[idx.necesaria])||0;
+    return {
+      articulo:(c[idx.articulo]||'').trim(),
+      categoria:(c[idx.categoria]||'General').trim(),
+      actual, necesaria,
+      unidad: idx.unidad>=0 ? (c[idx.unidad]||'').trim() : '',
+      cobertura: necesaria>0 ? actual/necesaria : 1
+    };
+  }).filter(r=>r.articulo);
+}
+
+function estado(cob){
+  if(cob < 0.25) return 'crit';
+  if(cob < 0.75) return 'bajo';
+  if(cob <= 1.10) return 'ok';
+  return 'exc';
+}
+const ETIQUETA = {crit:'Crítico', bajo:'Escaso', ok:'Suficiente', exc:'En exceso'};
+function fmt(n){ return Number(n).toLocaleString('es-CO'); }
+
+function render(){
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  let items = DATA.slice();
+  if(filtro.cat!=='Todas') items = items.filter(i=>i.categoria===filtro.cat);
+  if(filtro.q){ const q=filtro.q.toLowerCase(); items=items.filter(i=>i.articulo.toLowerCase().includes(q)); }
+  if(filtro.sort==='name') items.sort((a,b)=>a.articulo.localeCompare(b.articulo));
+  else if(filtro.sort==='gap') items.sort((a,b)=>(b.necesaria-b.actual)-(a.necesaria-a.actual));
+  else items.sort((a,b)=>a.cobertura-b.cobertura);
+
+  grid.innerHTML=''; empty.style.display = items.length ? 'none' : 'block';
+  items.forEach(i=>{
+    const st=estado(i.cobertura), pct=Math.round(i.cobertura*100), barPct=Math.min(100,pct);
+    const faltan=i.necesaria-i.actual;
+    let gapHtml;
+    if(faltan>0) gapHtml=`<span class="gap need">Faltan ${fmt(faltan)} ${i.unidad}</span>`;
+    else if(faltan<0) gapHtml=`<span class="gap extra">Sobran ${fmt(-faltan)} ${i.unidad}</span>`;
+    else gapHtml=`<span class="gap done">Cubierto</span>`;
+    const el=document.createElement('div'); el.className='item is-'+st;
+    el.innerHTML=`
+      <div class="top">
+        <div><div class="name">${i.articulo}</div><div class="cat-tag">${i.categoria}</div></div>
+        <span class="badge is-${st}">${ETIQUETA[st]}</span>
+      </div>
+      <div class="bar"><i class="is-${st}" style="width:${barPct}%"></i></div>
+      <div class="nums"><span>Cobertura <b>${pct}%</b></span><span><b>${fmt(i.actual)}</b> / ${fmt(i.necesaria)} ${i.unidad}</span></div>
+      ${gapHtml}`;
+    grid.appendChild(el);
+  });
+}
+
+function renderStats(){
+  const total=DATA.length;
+  const crit=DATA.filter(i=>['crit','bajo'].includes(estado(i.cobertura))).length;
+  const exc=DATA.filter(i=>estado(i.cobertura)==='exc').length;
+  const ok=DATA.filter(i=>estado(i.cobertura)==='ok').length;
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="n">${total}</div><div class="l">Artículos en la lista</div></div>
+    <div class="stat crit"><div class="n">${crit}</div><div class="l">Necesitan donaciones</div></div>
+    <div class="stat ok"><div class="n">${ok}</div><div class="l">Con stock suficiente</div></div>
+    <div class="stat exc"><div class="n">${exc}</div><div class="l">Ya hay de más</div></div>`;
+  const need=DATA.slice().sort((a,b)=>a.cobertura-b.cobertura).slice(0,6);
+  document.getElementById('destacado').style.display = need.length ? 'block':'none';
+  document.getElementById('needList').innerHTML=need.map(i=>{
+    const faltan=Math.max(0,i.necesaria-i.actual);
+    return `<div class="need-chip">${i.articulo} <span>· faltan ${fmt(faltan)} ${i.unidad}</span></div>`;
+  }).join('');
+}
+
+function renderCats(){
+  const cats=['Todas',...Array.from(new Set(DATA.map(i=>i.categoria)))];
+  const box=document.getElementById('cats');
+  box.innerHTML=cats.map(c=>`<button class="cat${c===filtro.cat?' active':''}" data-c="${c}">${c}</button>`).join('');
+  box.querySelectorAll('.cat').forEach(b=>b.addEventListener('click',()=>{filtro.cat=b.dataset.c;renderCats();render();}));
+}
+
+function pintar(text, fuente){
+  DATA=parseCSV(text); renderStats(); renderCats(); render();
+  const u=document.getElementById('updated'); const t=document.getElementById('updatedTxt');
+  const hora=new Date().toLocaleString('es-CO');
+  if(fuente==='vivo'){ u.classList.remove('err'); t.textContent=`Datos en vivo desde el CSV · actualizado ${hora}`; }
+  else { u.classList.add('err'); t.textContent='Mostrando datos de respaldo (no se pudo leer el CSV en vivo).'; }
+}
+
+async function cargar(){
+  try{
+    const resp=await fetch(CSV_URL+ (CSV_URL.includes('?')?'&':'?') +'_='+Date.now(), {cache:'no-store'});
+    if(!resp.ok) throw new Error(resp.status);
+    pintar(await resp.text(),'vivo');
+  }catch(e){
+    pintar(CSV_RESPALDO,'respaldo');
+  }
+}
+
+document.getElementById('search').addEventListener('input',e=>{filtro.q=e.target.value;render();});
+document.getElementById('sort').addEventListener('change',e=>{filtro.sort=e.target.value;render();});
+cargar();
+if(REFRESH_MIN > 0){
+  setInterval(cargar, REFRESH_MIN*60*1000);
+  // También recarga al volver a enfocar la pestaña.
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) cargar(); });
+}
+</script>
+</body>
+</html>
